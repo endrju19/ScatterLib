@@ -3,6 +3,7 @@ package com.scatterlib.net;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Server;
+import com.scatterlib.packets.*;
 
 import java.util.ArrayList;
 
@@ -30,5 +31,13 @@ public class KryoUtil {
         kryo.register(String.class);
         kryo.register(Short.class);
         kryo.register(ArrayList.class);
+
+        kryo.register(PacketGetInstruction.class);
+        kryo.register(PacketGetWork.class);
+        kryo.register(PacketInstruction.class);
+        kryo.register(PacketJoinRequest.class);
+        kryo.register(PacketJoinResponse.class);
+        kryo.register(PacketNoNeed.class);
+        kryo.register(PacketWork.class);
     }
 }

@@ -8,5 +8,6 @@ public class StartClient {
 
     public static void main(String[] args) {
         client = new ScatterClient("127.0.0.1");
+        client.start();
     }
 }

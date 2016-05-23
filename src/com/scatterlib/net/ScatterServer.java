@@ -4,8 +4,15 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
+import com.scatterlib.packets.*;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
 
 /**
  * Created by przemek on 21.05.16.
@@ -14,6 +21,10 @@ public class ScatterServer {
 
     private final Server server;
     private Thread thread;
+    private byte ID = 1;
+    private byte taskID = 1;
+    private ArrayList<Class> classes = new ArrayList<>();
+    private Map<Byte, PacketInstruction> instructions = new HashMap<>();
 
     public ScatterServer() {
         Server tempServer = null;
@@ -24,9 +35,22 @@ public class ScatterServer {
         }
         this.server = tempServer;
         try {
-            Log.set(Log.LEVEL_DEBUG);
+            Log.set(Log.LEVEL_NONE);
             KryoUtil.registerServerClasses(server);
-            server.addListener(new Listener() {
+            Listener listener = new Listener() {
+
+                @Override
+                public synchronized void received(Connection connection, Object obj) {
+                    if (obj instanceof PacketGetInstruction) {
+                        connection.sendTCP(instructions.get((byte) 1));
+                    } else if (obj instanceof PacketGetWork) {
+                        connection.sendTCP(new PacketWork((byte) 1, (byte) 1));
+                    } else if (obj instanceof PacketJoinRequest) {
+                        System.out.println("Join message: " + ((PacketJoinRequest) obj).getMessage());
+                        connection.sendTCP(new PacketJoinResponse(ID++));
+                    }
+                }
+
                 @Override
                 public synchronized void connected(Connection connection) {
                     System.out.println("Received a connection from " + connection.getRemoteAddressTCP().getHostString() + " (" + connection.getID() + ")");
@@ -34,13 +58,11 @@ public class ScatterServer {
 
                 @Override
                 public synchronized void disconnected(Connection connection) {
+                    System.out.println("Disconnected: " + connection.toString());
                 }
 
-                @Override
-                public synchronized void received(Connection connection, Object obj) {
-                }
-
-            });
+            };
+            server.addListener(listener);
             try {
                 server.bind(KryoUtil.TCP_PORT, KryoUtil.UDP_PORT);
             } catch (IOException ex) {
@@ -48,17 +70,32 @@ public class ScatterServer {
                 return;
             }
             System.out.println("Server started!");
-        } catch (Exception e) {
-            cleanUp(e);
+        } catch (Exception ex) {
+            cleanUp(ex);
         }
+    }
+
+
+    public void addClass(Class c) {
+        classes.add(c);
+        Scanner scanner = null;
+        try {
+            scanner = new Scanner(new File("src/" + c.getName().replace(".", "/") + ".java"));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        String text = scanner.useDelimiter("\\A").next();
+        scanner.close();
+        instructions.put(taskID, new PacketInstruction(taskID, c.getName(), text));
+        taskID++;
     }
 
     public synchronized void start() {
         thread = new Thread(server, "Server");
         try {
             thread.start();
-        } catch (Exception e) {
-            cleanUp(e);
+        } catch (Exception ex) {
+            cleanUp(ex);
         }
     }
 

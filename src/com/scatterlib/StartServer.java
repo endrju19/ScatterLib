@@ -9,6 +9,7 @@ public class StartServer {
 
     public static void main(String[] args) {
         server = new ScatterServer();
+        server.addClass(Work.class);
         server.start();
     }
 }
