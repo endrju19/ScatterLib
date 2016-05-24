@@ -32,12 +32,14 @@ public class KryoUtil {
         kryo.register(Short.class);
         kryo.register(ArrayList.class);
 
+        kryo.register(PacketData.class);
         kryo.register(PacketGetInstruction.class);
         kryo.register(PacketGetWork.class);
         kryo.register(PacketInstruction.class);
         kryo.register(PacketJoinRequest.class);
         kryo.register(PacketJoinResponse.class);
         kryo.register(PacketNoNeed.class);
+        kryo.register(PacketResult.class);
         kryo.register(PacketWork.class);
     }
 }

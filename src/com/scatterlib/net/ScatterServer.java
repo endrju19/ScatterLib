@@ -23,6 +23,7 @@ public class ScatterServer {
     private Thread thread;
     private byte ID = 1;
     private byte taskID = 1;
+    private int parametersID = 1;
     private ArrayList<Class> classes = new ArrayList<>();
     private Map<Byte, PacketInstruction> instructions = new HashMap<>();
 
@@ -44,7 +45,11 @@ public class ScatterServer {
                     if (obj instanceof PacketGetInstruction) {
                         connection.sendTCP(instructions.get((byte) 1));
                     } else if (obj instanceof PacketGetWork) {
-                        connection.sendTCP(new PacketWork((byte) 1, (byte) 1));
+                        PacketInstruction inst = instructions.get((byte) 1);
+                        connection.sendTCP(new PacketWork(inst.getID(), 0, parametersID++, 1));
+                        connection.sendTCP(new PacketData(4));
+                    } else if (obj instanceof PacketResult) {
+                        combineResult((PacketResult) obj);
                     } else if (obj instanceof PacketJoinRequest) {
                         System.out.println("Join message: " + ((PacketJoinRequest) obj).getMessage());
                         connection.sendTCP(new PacketJoinResponse(ID++));
@@ -73,6 +78,10 @@ public class ScatterServer {
         } catch (Exception ex) {
             cleanUp(ex);
         }
+    }
+
+    private void combineResult(PacketResult result) {
+//        TODO
     }
 
 

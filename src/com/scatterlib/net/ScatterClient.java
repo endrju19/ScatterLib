@@ -9,6 +9,8 @@ import com.scatterlib.packets.*;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,6 +28,7 @@ public class ScatterClient {
     private boolean haveWork;
     private PacketWork work;
     private Map<Byte, Class> instructions = new HashMap<>();
+    private ArrayList<PacketData> data = new ArrayList<>();
 
 
     public ScatterClient(String IP) {
@@ -43,18 +46,21 @@ public class ScatterClient {
             Listener listener = new Listener() {
                 @Override
                 public void received(Connection connection, Object obj) {
-                    if (obj instanceof PacketJoinResponse) {
-                        server = connection;
-                        System.out.println("My ID: " + ((PacketJoinResponse) obj).getID());
+                    if (obj instanceof PacketData) {
+                        data.add((PacketData) obj);
                     } else if (obj instanceof PacketWork) {
                         if (!haveWork) {
                             work = (PacketWork) obj;
+                            data.clear();
                             haveWork = true;
                         } else {
                             connection.sendTCP(new PacketNoNeed());
                         }
                     } else if (obj instanceof PacketInstruction) {
                         addInstruction((PacketInstruction) obj);
+                    } else if (obj instanceof PacketJoinResponse) {
+                        server = connection;
+                        System.out.println("My ID: " + ((PacketJoinResponse) obj).getID());
                     }
                 }
 
@@ -134,8 +140,33 @@ public class ScatterClient {
                 }
             } else {
                 try {
-                    System.out.println("Parameter number: " + work.getParametersNumber());
-                    System.out.println(instruction.getDeclaredMethods()[0].invoke(null));
+                    if (data.size() == work.getParametersNumber()) {
+                        Object result = null;
+                        Method method = null;
+                        if (instruction.getDeclaredMethods().length > work.getMethodID()) {
+                            method = instruction.getDeclaredMethods()[work.getMethodID()];
+                        }
+                        if (method != null) {
+                            switch (data.size()) {
+                                case 0:
+                                    result = method.invoke(null);
+                                    break;
+                                case 1:
+                                    result = method.invoke(null, data.get(0).getData());
+                                    break;
+                                case 2:
+                                    result = method.invoke(null, data.get(0).getData(), data.get(1).getData());
+                                    break;
+                                case 3:
+                                    result = method.invoke(null, data.get(0).getData(), data.get(1).getData(), data.get(2).getData());
+                                    break;
+                            }
+                            System.out.println(result);
+                            if (result != null) {
+                                server.sendTCP(new PacketResult(result, work.getParametersID()));
+                            }
+                        }
+                    }
                 } catch (InvocationTargetException e) {
                     e.printStackTrace();
                 } catch (IllegalAccessException e) {
