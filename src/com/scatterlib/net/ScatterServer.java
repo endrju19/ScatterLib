@@ -47,7 +47,7 @@ public class ScatterServer {
                     } else if (obj instanceof PacketGetWork) {
                         PacketInstruction inst = instructions.get((byte) 1);
                         connection.sendTCP(new PacketWork(inst.getID(), 0, parametersID++, 1));
-                        connection.sendTCP(new PacketData(4));
+                        connection.sendTCP(new PacketData("ABC"));
                     } else if (obj instanceof PacketResult) {
                         combineResult((PacketResult) obj);
                     } else if (obj instanceof PacketJoinRequest) {

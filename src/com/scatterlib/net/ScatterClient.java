@@ -29,6 +29,7 @@ public class ScatterClient {
     private PacketWork work;
     private Map<Byte, Class> instructions = new HashMap<>();
     private ArrayList<PacketData> data = new ArrayList<>();
+    private boolean asked;
 
 
     public ScatterClient(String IP) {
@@ -58,6 +59,7 @@ public class ScatterClient {
                         }
                     } else if (obj instanceof PacketInstruction) {
                         addInstruction((PacketInstruction) obj);
+                        System.out.println("Instruction get");
                     } else if (obj instanceof PacketJoinResponse) {
                         server = connection;
                         System.out.println("My ID: " + ((PacketJoinResponse) obj).getID());
@@ -135,8 +137,9 @@ public class ScatterClient {
         if (work != null) {
             Class<?> instruction;
             if ((instruction = instructions.get(work.getInstructionID())) == null) {
-                if (server != null && server.isConnected()) {
+                if (server != null && server.isConnected() && !asked) {
                     server.sendTCP(new PacketGetInstruction(work.getInstructionID()));
+                    asked = true;
                 }
             } else {
                 try {
