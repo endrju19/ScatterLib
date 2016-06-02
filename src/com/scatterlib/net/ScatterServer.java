@@ -163,7 +163,7 @@ public class ScatterServer {
         } else if (result instanceof Double) {
             sum = (double) result + (double) sum;
         } else if (result instanceof String) {
-            sum = result + sum;
+            sum = (String) result + (String) sum;
         } else if (result instanceof BigDecimal) {
             sum = ((BigDecimal) result).add((BigDecimal) sum);
         } else if (result instanceof Byte) {
