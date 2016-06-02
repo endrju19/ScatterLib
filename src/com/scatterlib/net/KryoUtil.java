@@ -5,6 +5,8 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Server;
 import com.scatterlib.packets.*;
 
+import java.lang.reflect.Array;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 /**
@@ -31,6 +33,16 @@ public class KryoUtil {
         kryo.register(String.class);
         kryo.register(Short.class);
         kryo.register(ArrayList.class);
+        kryo.register(Array.class);
+        kryo.register(Object[].class);
+        kryo.register(Byte[].class);
+        kryo.register(Short[].class);
+        kryo.register(Integer[].class);
+        kryo.register(Long[].class);
+        kryo.register(Float[].class);
+        kryo.register(Double[].class);
+        kryo.register(String[].class);
+        kryo.register(BigDecimal[].class);
 
         kryo.register(PacketData.class);
         kryo.register(PacketGetInstruction.class);

@@ -29,7 +29,7 @@ public class ScatterClient {
     private PacketWork work;
     private Map<Byte, Class> instructions = new HashMap<>();
     private ArrayList<PacketData> data = new ArrayList<>();
-    private boolean asked;
+    private boolean asked, askedForWork;
 
 
     public ScatterClient(String IP) {
@@ -114,10 +114,11 @@ public class ScatterClient {
                 if (haveWork) {
                     work();
                 } else {
-                    if (System.currentTimeMillis() - lastTime > delay) {
+                    if (System.currentTimeMillis() - lastTime > delay || !askedForWork) {
                         if (server != null && server.isConnected()) {
                             lastTime = System.currentTimeMillis();
                             getWork();
+                            askedForWork = true;
                         }
                     }
                 }
@@ -142,6 +143,7 @@ public class ScatterClient {
                     asked = true;
                 }
             } else {
+                asked = false;
                 try {
                     if (data.size() == work.getParametersNumber()) {
                         Object result = null;
@@ -167,6 +169,7 @@ public class ScatterClient {
                             System.out.println(result);
                             if (result != null) {
                                 server.sendTCP(new PacketResult(result, work.getParametersID()));
+                                haveWork = false;
                             }
                         }
                     }
