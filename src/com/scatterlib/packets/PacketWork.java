@@ -6,16 +6,18 @@ public class PacketWork {
     private int parametersNumber;
     private int parametersID;
     private int methodID;
+    private byte threadID;
 
 
     public PacketWork() {
     }
 
-    public PacketWork(byte instructionID, int methodID, int parametersID, int parametersNumber) {
+    public PacketWork(byte instructionID, int methodID, int parametersID, int parametersNumber, byte threadID) {
         this.instructionID = instructionID;
         this.methodID = methodID;
         this.parametersID = parametersID;
         this.parametersNumber = parametersNumber;
+        this.threadID = threadID;
     }
 
     public byte getInstructionID() {
@@ -32,5 +34,9 @@ public class PacketWork {
 
     public int getMethodID() {
         return methodID;
+    }
+
+    public byte getThreadID() {
+        return threadID;
     }
 }

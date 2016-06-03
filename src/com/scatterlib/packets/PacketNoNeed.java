@@ -5,6 +5,16 @@ package com.scatterlib.packets;
  */
 public class PacketNoNeed {
 
+    int parametersID;
+
+    public PacketNoNeed(int parametersI) {
+    }
+
     public PacketNoNeed() {
+        this.parametersID = parametersID;
+    }
+
+    public int getParametersID() {
+        return parametersID;
     }
 }

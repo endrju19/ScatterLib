@@ -45,6 +45,7 @@ public class KryoUtil {
         kryo.register(BigDecimal[].class);
 
         kryo.register(PacketData.class);
+        kryo.register(PacketDone.class);
         kryo.register(PacketGetInstruction.class);
         kryo.register(PacketGetWork.class);
         kryo.register(PacketInstruction.class);

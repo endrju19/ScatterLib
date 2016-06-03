@@ -18,6 +18,7 @@ import java.util.*;
 public class ScatterServer {
 
     public final static int SUM = 0, MULTIPLY = 1, TO_ARRAY = 2;
+    public final static byte TO_DO = 0, SEND = 1, DONE = 2;
     private final Server server;
     private Thread thread;
     private byte ID = 0;
@@ -26,12 +27,12 @@ public class ScatterServer {
     private ArrayList<Class> classes = new ArrayList<>();
     private Map<Byte, PacketInstruction> instructions = new HashMap<>();
     private int combination;
-    private Class<?> resultType;
     private Object[] data;
     private Object sum;
     private Object[] array;
-    private int size, chunksSize, currentResult;
+    private int size, chunksSize;
     private boolean allDone = false;
+    private byte[] statuses;
 
     public ScatterServer(int combination, Object[] data, int size, Class<?> resultType) {
         initialize(combination, data, size, resultType);
@@ -43,7 +44,7 @@ public class ScatterServer {
         }
         this.server = tempServer;
         try {
-            Log.set(Log.LEVEL_NONE);
+            Log.set(Log.LEVEL_DEBUG);
             KryoUtil.registerServerClasses(server);
             Listener listener = new Listener() {
 
@@ -52,22 +53,19 @@ public class ScatterServer {
                     if (obj instanceof PacketGetInstruction) {
                         connection.sendTCP(instructions.get((byte) 0));
                     } else if (obj instanceof PacketGetWork) {
-                        if (parametersID < size) {
-                            PacketInstruction inst = instructions.get((byte) 0);
-                            connection.sendTCP(new PacketWork(inst.getID(), 0, parametersID, 1));
-                            int start = parametersID * chunksSize;
-                            int end = start + chunksSize;
-                            if (end > data.length) {
-                                end = data.length;
+                        if (parametersID <= size || anyWorkLeft()) {
+                            if (parametersID < size) {
+                                sendWord(connection, instructions.get((byte) 0).getID(), parametersID, ((PacketGetWork) obj).getThreadID());
+                            } else {
+                                int missingID = getMissingDataID();
+                                if (missingID >= 0) {
+                                    sendWord(connection, instructions.get((byte) 0).getID(), missingID, ((PacketGetWork) obj).getThreadID());
+                                }
                             }
-                            Object[] subArray = Arrays.copyOfRange(data, parametersID * chunksSize, end);
-                            connection.sendTCP(new PacketData(subArray));
-                            parametersID++;
                         } else {
                             if (allDone) {
-//                            TODO send signal to stop work.
-                                System.out.println("All done");
-                                connection.close();
+                                connection.sendTCP(new PacketDone());
+                                System.out.println(getResult());
                             } else {
                                 allDone = true;
                             }
@@ -75,8 +73,9 @@ public class ScatterServer {
                     } else if (obj instanceof PacketResult) {
                         combineResult((PacketResult) obj);
                     } else if (obj instanceof PacketJoinRequest) {
-                        System.out.println("Join message: " + ((PacketJoinRequest) obj).getMessage());
                         connection.sendTCP(new PacketJoinResponse(ID++));
+                    } else if (obj instanceof PacketNoNeed) {
+                        statuses[((PacketNoNeed) obj).getParametersID()] = TO_DO;
                     }
                 }
 
@@ -87,7 +86,7 @@ public class ScatterServer {
 
                 @Override
                 public synchronized void disconnected(Connection connection) {
-                    System.out.println("Disconnected: " + connection.toString());
+                    System.out.println(connection.toString() + " disconnected.");
                 }
 
             };
@@ -104,11 +103,33 @@ public class ScatterServer {
         }
     }
 
+
+    private void sendWord(Connection connection, byte instID, int paramID, byte threadID) {
+        connection.sendTCP(new PacketWork(instID, 0, paramID, 1, threadID));
+        int start = paramID * chunksSize;
+        int end = start + chunksSize;
+        if (end > data.length) {
+            end = data.length;
+        }
+        Object[] subArray = Arrays.copyOfRange(data, paramID * chunksSize, end);
+        connection.sendTCP(new PacketData(subArray, threadID));
+        statuses[paramID] = SEND;
+        parametersID++;
+    }
+
+    private boolean anyWorkLeft() {
+        for (int i = 0; i < statuses.length; i++) {
+            if (statuses[i] != DONE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void initialize(int combination, Object[] data, int size, Class<?> resultType) {
         this.combination = combination;
         this.data = data;
         this.size = size;
-        this.resultType = resultType;
         chunksSize = data.length / size;
         if (chunksSize * size != data.length) {
             chunksSize++;
@@ -116,6 +137,7 @@ public class ScatterServer {
         if (combination == TO_ARRAY) {
             array = new Object[size];
         }
+        statuses = new byte[size];
         if (combination < TO_ARRAY) {
             if (resultType == Integer.class) {
                 this.sum = new Integer(combination == SUM ? 0 : 1);
@@ -136,23 +158,24 @@ public class ScatterServer {
     }
 
     private void combineResult(PacketResult result) {
-//        currentResult++;
-        switch (combination) {
-            case SUM:
-                sumData(result.getResult());
-                break;
-            case MULTIPLY:
-                multiplyData(result.getResult());
-                break;
-            case TO_ARRAY:
-                if (result.getParametersID() < size) {
-                    array[result.getParametersID()] = result.getResult();
-                } else {
-                    System.out.println("Too big result id!");
-                }
-                break;
+        if (statuses[result.getParametersID()] != DONE) {
+            statuses[result.getParametersID()] = DONE;
+            switch (combination) {
+                case SUM:
+                    sumData(result.getResult());
+                    break;
+                case MULTIPLY:
+                    multiplyData(result.getResult());
+                    break;
+                case TO_ARRAY:
+                    if (result.getParametersID() < size) {
+                        array[result.getParametersID()] = result.getResult();
+                    } else {
+                        System.out.println("Too big result ID!");
+                    }
+                    break;
+            }
         }
-        System.out.println("Current result: " + sum);
     }
 
     private void sumData(Object result) {
@@ -230,4 +253,31 @@ public class ScatterServer {
         System.err.println(ex.getMessage());
     }
 
+
+    public synchronized Object getResult() {
+        if (isAllDone()) {
+            switch (combination) {
+                case SUM:
+                case MULTIPLY:
+                    return sum;
+                case TO_ARRAY:
+                    return array;
+            }
+        }
+        return null;
+    }
+
+
+    public boolean isAllDone() {
+        return allDone;
+    }
+
+    public int getMissingDataID() {
+        for (int i = 0; i < size; i++) {
+            if (statuses[i] != DONE) {
+                return i;
+            }
+        }
+        return -1;
+    }
 }

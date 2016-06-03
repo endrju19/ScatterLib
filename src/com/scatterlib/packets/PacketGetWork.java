@@ -5,8 +5,16 @@ package com.scatterlib.packets;
  */
 public class PacketGetWork {
 
+    private byte threadID;
 
     public PacketGetWork() {
     }
 
+    public PacketGetWork(byte threadID) {
+        this.threadID = threadID;
+    }
+
+    public byte getThreadID() {
+        return threadID;
+    }
 }
